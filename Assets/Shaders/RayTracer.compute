@@ -1,0 +1,118 @@
+#include "RayTracing2DCommon.cginc"
+
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel Kernel_Trace
+#pragma kernel Kernel_ConvertOutscatter
+
+struct EmittedRay
+{
+    float2 Position;
+    float2 Direction;
+    float4 Energy;
+};
+
+struct OutscatterEnergy
+{
+    uint r;
+    uint g;
+    uint b;
+    uint c;
+};
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> OutScatter;
+
+/* G buffer is three render targets:
+ *
+ * A-
+ * Float32 [Outscatter light, ??]
+ *
+ * B-
+ * UNORM8 [Albedo Color, Material Index]
+ *
+ * C-
+ * FLOAT16 [Normal XY, kDensity, Boundary]
+ *
+ * C generates a mipchain.
+ */
+
+Texture2D<float4> GBuffer0;
+Texture2D<float4> GBuffer1;
+StructuredBuffer<EmittedRay> RayBuffer;
+
+// BUGBUG Dumb hack to workaround Unity's inability to make a structured buffer UAV
+//RWStructuredBuffer<OutscatterEnergy> OutScatterBuffer; 
+RWTexture2D<uint> OutScatterBuffer;
+
+float4x4 WorldToOutScatterScreen;
+float4x4 OutScatterScreenToPixel;
+int OutScatterBufferWidth;
+
+int2 WorldToOutScatter(float2 pos)
+{
+    float4 v = mul(WorldToOutScatterScreen, float4(pos, 0, 1));
+    v /= v.w;
+    v.xy /= 2;
+    v.xy += 0.5;
+
+    uint2 dimensions;
+    OutScatter.GetDimensions(dimensions.x, dimensions.y);
+
+    return (int2)(v.xy * dimensions);
+}
+
+//void WriteOutscatter(int2 pixel, float3 energy)
+//{
+//    int i = pixel.x + pixel.y * OutScatterBufferWidth;
+//    uint r = energy.r * 1000;
+//    uint g = energy.g * 1000;
+//    uint b = energy.b * 1000;
+//
+//    InterlockedAdd(OutScatterBuffer[i].r, r);
+//    InterlockedAdd(OutScatterBuffer[i].g, g);
+//    InterlockedAdd(OutScatterBuffer[i].b, b);
+//    InterlockedAdd(OutScatterBuffer[i].c, 1);
+//}
+
+void WriteOutscatter_Workaround(int2 pixel, float3 energy)
+{
+    pixel.x *= 4;
+    uint r = energy.r * 1000;
+    uint g = energy.g * 1000;
+    uint b = energy.b * 1000;
+
+    OutScatterBuffer[pixel + int2(0, 0)] += r;
+    OutScatterBuffer[pixel + int2(1, 0)] += g;
+    OutScatterBuffer[pixel + int2(2, 0)] += b;
+    OutScatterBuffer[pixel + int2(3, 0)] += 1;
+
+    //InterlockedAdd(OutScatterBuffer[pixel + int2(0, 0)], r);
+    //InterlockedAdd(OutScatterBuffer[pixel + int2(1, 0)], g);
+    //InterlockedAdd(OutScatterBuffer[pixel + int2(2, 0)], b);
+    //InterlockedAdd(OutScatterBuffer[pixel + int2(3, 0)], 1);
+}
+
+[numthreads(256,1,1)]
+void Kernel_Trace(int3 id : SV_DispatchThreadID)
+{
+    EmittedRay ray = RayBuffer[id.x];
+
+    int2 emit_position = WorldToOutScatter(ray.Position);
+
+    WriteOutscatter_Workaround(emit_position, ray.Energy.rgb);
+}
+
+[numthreads(32, 32, 1)]
+void Kernel_ConvertOutscatter(int3 id : SV_DispatchThreadID)
+{
+    int2 buf = id.xy;
+    buf.x *= 4;
+    //OutScatter[id.xy] = float4(1, 1, 1, 1);
+    OutScatter[id.xy] = float4(
+        OutScatterBuffer[buf.xy + int2(0, 0)] / 1000.0f,
+        OutScatterBuffer[buf.xy + int2(1, 0)] / 1000.0f,
+        OutScatterBuffer[buf.xy + int2(2, 0)] / 1000.0f,
+        OutScatterBuffer[buf.xy + int2(3, 0)]);
+}
+

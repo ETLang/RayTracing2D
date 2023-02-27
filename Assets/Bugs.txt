@@ -1,0 +1,15 @@
+﻿* Upside Down Game Window
+* Invisible Sprite in Game Window
+* non-HDR outscatter emission color editor in sprite editor
+/ Material editor overriding sprite overrides
+* Sprite overrides not restoring when disabled
+* light flicker during edit mode
+? Gamma correction on tone mapping
+* Build has not been attempted
+- G Buffer has not been validated
+   * albedo
+   - object index
+   * outscatter
+   - density
+   - smoothness
+   - normal

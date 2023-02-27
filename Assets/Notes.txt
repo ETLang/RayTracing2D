@@ -1,0 +1,74 @@
+﻿Next Steps:
+- Solidify material editing UX
+- Make material update event-driven
+- Validate G Buffer
+- Generate Boundary map
+- Propagate rays to first bounce
+- Solidify basid game concept (pick an old favorite!)
+
+
+G buffer contents
+- albedo (3)
+- Object Index (1)
+- Outscatter (3)
+- Density (1)
+- Face Normal (3)
+- Smoothness (1)
+- Edge Normal (3)
+- Refraction Index (1)
+
+
+Interaction Potential Buffer:
+- Contains all variables necessary to find next interaction point.
+- POT Texture, uprounded, fully mipped
+- Boundary Presence (1)
+- Density (1)
+- Face normal Quantum Potential (2)
+
+Tracing Algorithm:
+
+- Advance 1 pixel
+- Test presence @ 1
+- Advance 2 pixels
+- Test presence @ 2
+- Advance 4 pixels
+- Test presence @ 2
+- ...
+- Presence found!
+- decrement step/mip
+- continue...
+- Presence found && mip == 0 && N . R < 0: colision!
+-
+
+On collision:
+- read density and refraction index on present substrate
+- Compute probability and location of substrate scatter
+- if substrate scattered: substrateScatter()
+- else, read features of next substrate
+- Decide to reflect or refract (split or probability...)
+- reflect() or refract()
+
+substrateScatter()
+- compute absorption and outscatter
+- choose random new direction
+- proceed!
+
+reflect()
+- compute absorption and outscatter
+- reflect around edge normal, randomize based on smoothness
+- proceed!
+
+refract()
+- compute absorption and outscatter
+- refract around edge, randomize based on smoothness
+- proceed!
+
+
+TODO: incorporate variable density and quantum normals
+
+NOTE: Substrate Scattering SUCKS. 
+
+
+Filtering:
+
+Problem - Current methods bias towards zero light
