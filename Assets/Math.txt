@@ -1,0 +1,58 @@
+Variance Mipmapping
+
+POI:
+Mean, Local Variance, Cumulative Variance, Samples
+
+Variance = Average((Mean - Sample)^2)
+
+N*V = Sum((M-S[])^2)
+
+
+N*V = Sum(M^2 - 2MS[] + S[]^2) = M^2 * S.Length - 2M*Sum(S[]) + Sum(S[]^2)
+
+Stored Vars: M, Sum(S[]), Sum(S[]^2), V
+
+
+
+N*V = Sum((M1-S[])^2) = SUM((M0-S[])^2) + E
+M1 = M0 + d
+
+Sum((M0 + d - S[])^2) = Sum((M0 - S[])^2) + E
+
+Sum(M0^2 + 2M0d - 2M0S[] + d^2 - 2dS[] + S[]^2) = Sum(M0^2 - 2M0S[] + S[]^2) + E
+
+Sum(M0^2 - 2M0S[] + S[]^2) + Sum(2M0d + d^2 - 2dS[]) = Sum(M0^2 - 2M0S[] + S[]^2) + E
+
+Sum(2M0d + d^2 - 2dS[]) = E = d * Sum(2M0 + d - 2S[]) = d * (d + 2*M0) * S[].Length - 2*d*Sum(S[])
+= (M1 - M0) * (M1 + M0) * S[].Length - 2 * (M1 - M0) * Sum(S[])
+
+N*V = Sum((M1-S[])^2) = SUM((M0-S[])^2) + (M1 - M0) * (M1 + M0) * S[].Length - 2 * (M1 - M0) * Sum(S[])
+
+Storage:
+
+A := M0
+B := Sum(S[])
+C := Sum((M0 - S[])^2) / N
+
+N*V = Sum((M1-S[])^2) = C + (M1-A)*(M1+A)*S[].Length - 2*(M1-A)*B
+
+N[i] = 4N[i-1]
+
+A[i] = M1
+B[i] = B[i-1]{xyzw}
+N[i]C[i] = C[i-1]*N[i-1] + (M1-A[i-1])*(M1+A[i-1])*N[i-1] - 2*(M1-A[i-1])*B[i-1]
+
+C[i] = {xywz}  C[i-1]/4 + (M1-A[i-1])*(M1+A[i-1])/4 - 2*(M1-A[i-1])*B[i-1]/(4N[i-1])
+
+A[i] = B[i]/N[i]
+
+C[i] = {xywz}  (C[i-1] + (M1-A[i-1])*(M1+A[i-1]) - 2*(M1-A[i-1])*A[i-1]) / 4
+
+C[i] = {xywz}  (C[i-1] + (M1-A[i-1])*((M1+A[i-1]) - 2*A[i-1])) / 4
+
+C[i] = {xywz}  (C[i-1] + (M1-A[i-1])*(M1-A[i-1])) / 4
+
+A[i] = {xyzw}  A[i-1]/4
+C[i] = {xywz}  C[i-1]/4 + (A[i] - A[i-1])^2/4
+
+

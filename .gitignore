@@ -1,1 +1,13 @@
 .exe
+
+*.user
+
+Assets/BasicTraining/
+
+Logs/
+
+.vsconfig
+
+Assembly-CSharp.csproj
+
+Assembly-CSharp-Editor.csproj
